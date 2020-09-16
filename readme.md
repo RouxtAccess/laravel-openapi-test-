@@ -15,7 +15,7 @@ Test your routes using Laravel's underlying request testing against your API sch
  
  ## Install
  
- 1. Add a custom repository for php-swagger-test with internal improvements. (In future it could be merged).
+ 1. Add a custom repository as this isn't on packagist yet
  
     ```
     "repositories": [
@@ -28,7 +28,7 @@ Test your routes using Laravel's underlying request testing against your API sch
  2. Require the package
     
     ```
-    compsoer require pion/laravel-swagger-test
+    composer require rouxtaccess/laravel-openapi-test
     ```
  
  ## Usage
