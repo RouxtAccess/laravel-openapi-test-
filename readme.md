@@ -11,14 +11,14 @@ Test your routes using Laravel's underlying request testing against your API sch
 
 > How to make tests and which OpenAPI is supported check the [PHP Swagger Test](https://github.com/byjg/php-swagger-test).
  
- At the time of writing this readme OpenAPI 3 is partially supported.
+ Currently this supports json api's only, but it should be very easy to override any required functionality
  
  ## Install
 
  1. Require the package
     
     ```
-    composer require rouxtaccess/laravel-openapi-test
+    composer require --dev rouxtaccess/laravel-openapi-test
     ```
  
  ## Usage

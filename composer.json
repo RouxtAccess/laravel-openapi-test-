@@ -22,9 +22,10 @@
         }
     },
     "require": {
+        "php": "^7.4",
+        "ext-json": "*",
         "byjg/swagger-test": "3.1.1.x-dev",
-        "laravel/framework": "*",
-        "ext-json": "*"
+        "laravel/framework": "*"
     },
     "repositories": []
 }

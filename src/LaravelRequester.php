@@ -3,46 +3,70 @@
 namespace RouxtAccess\OpenApi\Testing\Laravel;
 
 use ByJG\ApiTools\AbstractRequester;
+use ByJG\ApiTools\Exception\DefinitionNotFoundException;
 use ByJG\ApiTools\Exception\GenericSwaggerException;
+use ByJG\ApiTools\Exception\HttpMethodNotFoundException;
+use ByJG\ApiTools\Exception\InvalidDefinitionException;
+use ByJG\ApiTools\Exception\InvalidRequestException;
 use ByJG\ApiTools\Exception\NotMatchedException;
+use ByJG\ApiTools\Exception\PathNotFoundException;
 use ByJG\ApiTools\Exception\StatusCodeNotMatchedException;
-use ByJG\ApiTools\Laravel\Response\LaravelResponse;
-use ByJG\ApiTools\Response\ResponseInterface;
-use Illuminate\Foundation\Testing\TestCase;
+use ByJG\Util\Helper\RequestJson;
+use ByJG\Util\Psr7\MessageException;
+use ByJG\Util\Uri;
 use Illuminate\Support\Str;
+use JsonException;
+use Psr\Http\Message\RequestInterface;
+use Illuminate\Http\Response;
+use Tests\TestCase;
 
 class LaravelRequester extends AbstractRequester
 {
-    protected ResponseInterface $response;
+    protected Response $response;
     protected TestCase $testCase;
 
+    /**
+     * @noinspection PhpMissingParentConstructorInspection
+     * @noinspection MagicMethodsValidityInspection
+     * @param  TestCase  $testCase
+     * @throws MessageException
+     */
     public function __construct(TestCase $testCase)
     {
-        parent::__construct();
+        $this->withPsr7Request(RequestJson::build(new Uri("/"), 'get', "[]"));
         $this->testCase = $testCase;
-        $this->withRequestHeader(['content-type' => 'application/json']);
     }
 
-    protected function handleRequest($path, $headers)
+
+    /**
+     * @param  RequestInterface  $request
+     * @return Response
+     * @throws JsonException
+     */
+    protected function handleRequest(RequestInterface $request) : Response
     {
-        $testResponse = $this->testCase->call(
-            $this->method,
-            $path,
-            [],
-            [],
-            [],
-            // Convert headers to server headers
-            collect($headers)->mapWithKeys(function ($value, $name) {
-                $name = strtr(strtoupper($name), '-', '_');
-
-                return [$this->formatServerHeaderKey($name) => $value];
-            })->all(),
-            json_encode($this->requestBody)
+        $testResponse = $this->testCase->json(
+            $request->getMethod(),
+            (string) $request->getUri(),
+            json_decode($request->getBody()->getContents(), true, 512, JSON_THROW_ON_ERROR),
+            $this->getServerHeaders($request),
         );
-        return new LaravelResponse($testResponse->baseResponse);
+        return $testResponse->baseResponse;
     }
 
 
+    /**
+     * @param  RequestInterface  $request
+     * @return array
+     */
+    protected function getServerHeaders(RequestInterface $request) : array
+    {
+        // Convert headers to server headers
+        return collect($request->getHeaders())->mapWithKeys(function ($value, $name) {
+            $name = str_replace('-', '_', strtoupper($name));
+            return [$this->formatServerHeaderKey($name) => $value];
+        })->all();
+    }
     /**
      * Format the header name for the server array.
      *
@@ -50,68 +74,101 @@ class LaravelRequester extends AbstractRequester
      *
      * @return string
      */
-    protected function formatServerHeaderKey($name)
+    protected function formatServerHeaderKey($name): string
     {
-        if (!Str::startsWith($name, 'HTTP_') && $name !== 'CONTENT_TYPE' && $name !== 'REMOTE_ADDR') {
+        if ($name !== 'CONTENT_TYPE' && $name !== 'REMOTE_ADDR' && !Str::startsWith($name, 'HTTP_')) {
             return 'HTTP_'.$name;
         }
 
         return $name;
     }
 
-    public function send()
+    /**
+     * @return Response
+     * @throws JsonException
+     */
+    public function send() : Response
     {
-        // Preparing Parameters
-        $paramInQuery = null;
-        if (!empty($this->query)) {
-            $paramInQuery = '?' . http_build_query($this->query);
+        // Process URI based on the OpenAPI schema
+        $uriSchema = new Uri($this->schema->getServerUrl());
+
+        if (empty($uriSchema->getScheme())) {
+            $uriSchema = $uriSchema->withScheme($this->psr7Request->getUri()->getScheme());
         }
 
-        // Preparing Header
-        if (empty($this->requestHeader)) {
-            $this->requestHeader = [];
+        if (empty($uriSchema->getHost())) {
+            $uriSchema = $uriSchema->withHost($this->psr7Request->getUri()->getHost());
         }
-        $header = array_merge(
-            [
-                'Accept' => 'application/json'
-            ],
-            $this->requestHeader
-        );
 
-        // Defining Variables
-        $pathName = $this->path;
+        $uri = $this->psr7Request->getUri()
+            ->withScheme($uriSchema->getScheme())
+            ->withHost($uriSchema->getHost())
+            ->withPort($uriSchema->getPort())
+            ->withPath($uriSchema->getPath() . $this->psr7Request->getUri()->getPath());
 
-        $statusReturned = null;
+        if (!preg_match("~^{$this->schema->getBasePath()}~",  $uri->getPath())) {
+            $uri = $uri->withPath($this->schema->getBasePath() . $uri->getPath());
+        }
 
-        // Run the request
-        $this->response = $this->handleRequest($pathName . $paramInQuery, $header);
+        $this->psr7Request = $this->psr7Request->withUri($uri);
+        // Handle Request
+        $this->response = $this->handleRequest($this->psr7Request);
+
         return $this->response;
     }
 
+    /**
+     * @return bool
+     * @throws InvalidRequestException
+     * @throws JsonException
+     * @throws HttpMethodNotFoundException
+     * @throws PathNotFoundException
+     */
     public function validateRequest(): bool
     {
-        $basePath = $this->schema->getBasePath();
-        $pathName = $this->path;
+        // Prepare Body to Match Against Specification
+        $requestBody = $this->psr7Request->getBody();
+        if ($requestBody !== null) {
+            $requestBody = $requestBody->getContents();
+
+            $contentType = $this->psr7Request->getHeaderLine("content-type");
+            if (empty($contentType) || strpos($contentType, "application/json") !== false) {
+                $requestBody = json_decode($requestBody, true, 512, JSON_THROW_ON_ERROR);
+            } elseif (strpos($contentType, "multipart/") !== false) {
+                $requestBody = $this->parseMultiPartForm($contentType, $requestBody);
+            } else {
+                throw new InvalidRequestException("Cannot handle Content Type '{$contentType}'");
+            }
+        }
 
         // Check if the body is the expected before request
-        $bodyRequestDef = $this->schema->getRequestParameters("$basePath$pathName", $this->method);
-        $bodyRequestDef->match($this->requestBody);
+        $bodyRequestDef = $this->schema->getRequestParameters($this->psr7Request->getUri()->getPath(), $this->psr7Request->getMethod());
+        $bodyRequestDef->match($requestBody);
         return true;
     }
 
-    public function validateResponse(ResponseInterface $response, $status = null): bool
+    /**
+     * @param  Response  $response
+     * @param  null  $status
+     * @return bool
+     * @throws JsonException
+     * @throws NotMatchedException
+     * @throws StatusCodeNotMatchedException
+     * @throws DefinitionNotFoundException
+     * @throws GenericSwaggerException
+     * @throws HttpMethodNotFoundException
+     * @throws InvalidDefinitionException
+     * @throws PathNotFoundException
+     */
+    public function validateResponse(Response $response, $status = null): bool
     {
-        // Defining Variables
-        $basePath = $this->schema->getBasePath();
-        $pathName = $this->path;
-
-        // Get the response
-        $responseHeader = $response->getHeaders();
-        $responseBody = json_decode((string) $response->getBody(), true, 512, JSON_THROW_ON_ERROR);
+        $responseHeaderBag = $response->headers;
+        $responseBodyStr = (string) $response->getContent();
+        $responseBody = json_decode($responseBodyStr, true, 512, JSON_THROW_ON_ERROR);
         $statusReturned = $response->getStatusCode();
 
         // Assert results
-        if ($status && $status !== $statusReturned) {
+        if ($status !== $statusReturned) {
             throw new StatusCodeNotMatchedException(
                 "Status code not matched: Expected {$status}, got {$statusReturned}",
                 $responseBody
@@ -119,32 +176,28 @@ class LaravelRequester extends AbstractRequester
         }
 
         $bodyResponseDef = $this->schema->getResponseParameters(
-            "$basePath$pathName",
-            $this->method,
+            $this->psr7Request->getUri()->getPath(),
+            $this->psr7Request->getMethod(),
             $status
         );
         $bodyResponseDef->match($responseBody);
 
-        if (count($this->assertHeader) > 0) {
-            foreach ($this->assertHeader as $key => $value) {
-                if (!isset($responseHeader[$key]) || strpos($responseHeader[$key][0], $value) === false) {
-                    throw new NotMatchedException(
-                        "Does not exists header '$key' with value '$value'",
-                        $responseHeader
-                    );
+        foreach ($this->assertHeader as $key => $value) {
+            if ($responseHeaderBag->get($key)) {
+                throw new NotMatchedException(
+                    "Does not exists header '$key' with value '$value'",
+                    $responseHeaderBag->all(),
+                );
+            }
+        }
+
+        if (!empty($responseBodyStr)) {
+            foreach ($this->assertBody as $item) {
+                if (strpos($responseBodyStr, $item) === false) {
+                    throw new NotMatchedException("Body does not contain '{$item}'");
                 }
             }
         }
         return true;
-    }
-
-    /**
-     * @throws GenericSwaggerException
-     */
-    protected function checkSchema(): void
-    {
-        if (!$this->schema) {
-            throw new GenericSwaggerException('You have to configure a schema for either the request or the testcase');
-        }
     }
 }
