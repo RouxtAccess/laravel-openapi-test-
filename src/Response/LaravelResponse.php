@@ -1,6 +1,6 @@
 <?php
 
-namespace ByJG\ApiTools\Laravel\Response;
+namespace RouxtAccess\OpenApi\Testing\Laravel\Response;
 
 use ByJG\ApiTools\Response\ResponseInterface;
 use Symfony\Component\HttpFoundation\Response;

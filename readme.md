@@ -1,8 +1,11 @@
-# Laravel Swagger Test
+# Laravel OpenApi Test
 
 > Underlying logic uses [PHP Swagger Test](https://github.com/byjg/php-swagger-test) from [byjg](https://github.com/byjg)
 
-Test your routes using Laravel's underlying request testing (without making real request) against your API schema.
+> This was based upon [Laravel Swagger Test](https://github.com/pion/laravel-swagger-test) from [pion](https://github.com/pion)
+
+
+Test your routes using Laravel's underlying request testing against your API schema.
 
 ## Support
 
@@ -18,7 +21,7 @@ Test your routes using Laravel's underlying request testing (without making real
     "repositories": [
         {
             "type": "git",
-            "url": "https://github.com/pionl/php-swagger-test"
+            "url": "https://github.com/rouxtaccess/laravel-openapi-test"
         }
     ]
     ```
@@ -30,57 +33,72 @@ Test your routes using Laravel's underlying request testing (without making real
  
  ## Usage
  
- Use the Laravel's TestCase and use `AssertRequestAgainstSchema` trait assert request against schema.
+ Use the Laravel's TestCase and add the `ImplementsOpenApiFunctions` trait.
+ 
+ Add `$this->setUpOpenApiTester();` to your test's setUp function
  
  Uses same "request building" as `ApiRequester`. For more details check the [PHP Swagger Test](https://github.com/byjg/php-swagger-test).
  
+ For validation and testing, there are methods for `validateRequest()`, `validateRequestFails()`, `sendRequest()`, `validateResponse(Response::HTTP_OK);`
+ 
+ See example below:
+ 
  ```php
+<?php
+
+namespace Tests\Feature\Api;
+
+use App\User;
+use RouxtAccess\OpenApi\Testing\Laravel\Traits\ImplementsOpenApiFunctions;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
-use ByJG\ApiTools\AssertRequestAgainstSchema;
-use ByJG\ApiTools\Base\Schema;
-use ByJG\ApiTools\Laravel\LaravelRequester;
 
-class GetUsersTest extends TestCase
+class AuthTest extends TestCase
 {
-    use AssertRequestAgainstSchema;
+    use ImplementsOpenApiFunctions;
     
-    /**
-     * Loaded schema for phpunit instance.
-     *
-     * @var Schema|null
-     */
-    public static $cachedSchema = null;
-
-    protected function setUp()
+    protected function setUp(): void
     {
         parent::setUp();
-
-        // Load only once, must be made in setup to be able to use base_path
-        if (null !== $this->schema) {
-            return;
-        }
-
-        // Load only once per phpunit instance
-        if (null === self::$cachedSchema) {
-            self::$cachedSchema = Schema::getInstance(file_get_contents(base_path('docs/api.json')));
-        }
-
-        // Set the schema
-        $this->setSchema(self::$cachedSchema);
+        $this->setUpOpenApiTester();
     }
 
-    public function testGetUsersWithoutFiltersInElasticSearchAgainstSchema()
+    public function testLoginWithoutDetails()
     {
-        // Create data
-        $this->createUser();
+        $this->requester->withMethod('POST')
+            ->withPath('/api/auth/login');
 
-        $request = new LaravelRequester($this);
-        $request
-            ->withMethod('GET')
-            ->withPath('/v1/users');
+        $this->validateRequestFails()
+            ->sendRequest()
+            ->validateResponse(Response::HTTP_UNPROCESSABLE_ENTITY);
 
-        $this->assertRequest($request);
+        self::assertArrayHasKey('email', $this->responseBody['errors']);
+        self::assertArrayHasKey('password', $this->responseBody['errors']);
+    }
+
+    public function testLoginIncorrectDetails()
+    {
+        $this->requester->withMethod('POST')
+            ->withPath('/api/auth/login')
+            ->withRequestBody(['email' => 'not_a_real_users_email@notreal.com', 'password' => 'not_a_valid_password']);
+
+        $this->validateRequestFails()
+            ->sendRequest()
+            ->validateResponse(Response::HTTP_UNAUTHORIZED);
+    }
+
+    public function testLoginSuccess()
+    {
+        $user = factory(User::class)->create(['name' => 'test-user', 'email' => 'testemail@example.com', 'password' => bcrypt('bestpassword')]);
+
+        $this->requester->withMethod('POST')
+            ->withPath('/api/auth/login')
+            ->withRequestBody(['email' => $user->email, 'password' => 'bestpassword']);
+
+        $this->validateRequest()
+            ->sendRequest()
+            ->validateResponse(Response::HTTP_OK);
     }
 }
- 
+
 ``` 

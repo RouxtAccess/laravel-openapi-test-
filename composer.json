@@ -1,8 +1,12 @@
 {
-    "name": "pion/laravel-swagger-test",
+    "name": "rouxtaccess/laravel-openapi-test",
     "type": "library",
     "license": "MIT",
     "authors": [
+        {
+            "name": "John Roux",
+            "email": "cto@rouxtaccess.co.za"
+        },
         {
             "name": "Martin Kluska",
             "email": "martin@kluska.cz"
@@ -14,17 +18,13 @@
     ],
     "autoload": {
         "psr-4": {
-            "ByJG\\ApiTools\\Laravel\\": "src/"
+            "RouxtAccess\\OpenApi\\Testing\\Laravel": "src/"
         }
     },
     "require": {
         "byjg/swagger-test": "3.1.1.x-dev",
-        "laravel/framework": "*"
+        "laravel/framework": "*",
+        "ext-json": "*"
     },
-    "repositories": [
-        {
-            "type": "git",
-            "url": "https://github.com/pionl/php-swagger-test"
-        }
-    ]
+    "repositories": []
 }
