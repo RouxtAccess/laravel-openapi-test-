@@ -14,18 +14,8 @@ Test your routes using Laravel's underlying request testing against your API sch
  At the time of writing this readme OpenAPI 3 is partially supported.
  
  ## Install
- 
- 1. Add a custom repository as this isn't on packagist yet
- 
-    ```
-    "repositories": [
-        {
-            "type": "git",
-            "url": "https://github.com/rouxtaccess/laravel-openapi-test"
-        }
-    ]
-    ```
- 2. Require the package
+
+ 1. Require the package
     
     ```
     composer require rouxtaccess/laravel-openapi-test

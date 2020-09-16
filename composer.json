@@ -18,7 +18,7 @@
     ],
     "autoload": {
         "psr-4": {
-            "RouxtAccess\\OpenApi\\Testing\\Laravel": "src/"
+            "RouxtAccess\\OpenApi\\Testing\\Laravel\\": "src/"
         }
     },
     "require": {
