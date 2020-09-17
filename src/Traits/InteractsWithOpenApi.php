@@ -5,7 +5,7 @@ namespace RouxtAccess\OpenApi\Testing\Laravel\Traits;
 
 use ByJG\ApiTools\Base\Schema;
 use ByJG\Util\Psr7\MessageException;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
 use RouxtAccess\OpenApi\Testing\Laravel\LaravelRequester;
 
 
@@ -58,6 +58,13 @@ trait InteractsWithOpenApi
         if(!isset($this->requester))
         {
             throw new \RuntimeException('Requester is not instantiated. Have you incorrectly overridden the setUp method?');
+        }
+    }
+    protected function checkResponseIsInstantiated(): void
+    {
+        if(!isset($this->response))
+        {
+            throw new \RuntimeException('Response is not instantiated. Have you sent the request?');
         }
     }
 

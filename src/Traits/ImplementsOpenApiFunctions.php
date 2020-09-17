@@ -4,5 +4,5 @@ namespace RouxtAccess\OpenApi\Testing\Laravel\Traits;
 
 trait ImplementsOpenApiFunctions
 {
-    use InteractsWithOpenApi, ValidatesOpenApiRequest, SendsOpenApiRequest, ValidatesOpenApiResponse;
+    use InteractsWithOpenApi, ValidatesOpenApiRequest, SendsOpenApiRequest, ValidatesOpenApiResponse, AssertsOpenApiResponse;
 }

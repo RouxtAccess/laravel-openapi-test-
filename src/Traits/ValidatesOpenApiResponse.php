@@ -4,7 +4,7 @@
 
 namespace RouxtAccess\OpenApi\Testing\Laravel\Traits;
 
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
 use function PHPUnit\Framework\assertInstanceOf;
 use function PHPUnit\Framework\assertTrue;
 
@@ -14,7 +14,7 @@ trait ValidatesOpenApiResponse
 
     protected function validateResponse($status = null) : self
     {
-        $this->checkRequesterIsInstantiated();
+        $this->checkResponseIsInstantiated();
         assertInstanceOf(Response::class, $this->response);
         assertTrue($this->requester->validateResponse($this->response, $status));
 

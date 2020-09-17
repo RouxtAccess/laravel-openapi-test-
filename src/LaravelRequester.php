@@ -17,7 +17,7 @@ use ByJG\Util\Uri;
 use Illuminate\Support\Str;
 use JsonException;
 use Psr\Http\Message\RequestInterface;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 
 class LaravelRequester extends AbstractRequester
