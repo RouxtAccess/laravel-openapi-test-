@@ -1,17 +1,16 @@
 # Laravel OpenApi Test
 
 > Underlying logic uses [PHP Swagger Test](https://github.com/byjg/php-swagger-test) from [byjg](https://github.com/byjg)
-
-> This was based upon [Laravel Swagger Test](https://github.com/pion/laravel-swagger-test) from [pion](https://github.com/pion)
+> This was based upon [Laravel Swagger Test](https://github.com/pionl/laravel-swagger-test) from [pionl](https://github.com/pionl)
 
 
 Test your routes using Laravel's underlying request testing against your API schema.
 
 ## Support
 
-> How to make tests and which OpenAPI is supported check the [PHP Swagger Test](https://github.com/byjg/php-swagger-test).
+> For how the assertions work against your documentation, please check the [PHP Swagger Test](https://github.com/byjg/php-swagger-test).
  
- Currently this supports json api's only, but it should be very easy to override any required functionality
+ Currently, this only supports json api's, it should be very easy to override any required functionality
  
  ## Install
 
@@ -31,6 +30,7 @@ Test your routes using Laravel's underlying request testing against your API sch
  
  For validation and testing, there are methods for `validateRequest()`, `validateRequestFails()`, `sendRequest()`, `validateResponse(Response::HTTP_OK);`
  
+ For asserting response data on top of the OpenApi required spec you can use the `assertResponseHas()` helper method
  See example below:
  
  ```php
@@ -43,7 +43,7 @@ use RouxtAccess\OpenApi\Testing\Laravel\Traits\ImplementsOpenApiFunctions;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 
-class AuthTest extends TestCase
+class AuthLoginTest extends TestCase
 {
     use ImplementsOpenApiFunctions;
     
@@ -62,8 +62,8 @@ class AuthTest extends TestCase
             ->sendRequest()
             ->validateResponse(Response::HTTP_UNPROCESSABLE_ENTITY);
 
-        self::assertArrayHasKey('email', $this->responseBody['errors']);
-        self::assertArrayHasKey('password', $this->responseBody['errors']);
+        $this->assertResponseHas('errors.email');
+        $this->assertResponseHas('errors.password');
     }
 
     public function testLoginIncorrectDetails()
