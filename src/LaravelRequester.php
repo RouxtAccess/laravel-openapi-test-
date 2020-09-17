@@ -63,10 +63,28 @@ class LaravelRequester extends AbstractRequester
     {
         // Convert headers to server headers
         return collect($request->getHeaders())->mapWithKeys(function ($value, $name) {
-            $name = str_replace('-', '_', strtoupper($name));
-            return [$this->formatServerHeaderKey($name) => $value];
+            return $this->formatServerHeader($name, $value);
         })->all();
     }
+
+    /**
+     * Format the header key/val for the server array
+     * @param $name
+     * @param $value
+     * @return array
+     */
+    protected function formatServerHeader($name, $value) : array
+    {
+        $name = str_replace('-', '_', strtoupper($name));
+        $name = $this->formatServerHeaderKey($name);
+        if($name === "HTTP_AUTHORIZATION")
+        {
+            $value = array_shift($value);
+        }
+
+        return [$name => $value];
+    }
+
     /**
      * Format the header name for the server array.
      *
