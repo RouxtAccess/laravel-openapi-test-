@@ -1,6 +1,7 @@
 # Laravel OpenApi Test
 
 > Underlying logic uses [PHP Swagger Test](https://github.com/byjg/php-swagger-test) from [byjg](https://github.com/byjg)
+> Built for use with [L5-Swagger](https://github.com/DarkaOnLine/L5-Swagger/)
 > This was based upon [Laravel Swagger Test](https://github.com/pionl/laravel-swagger-test) from [pionl](https://github.com/pionl)
 
 
