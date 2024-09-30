@@ -50,7 +50,7 @@ trait InteractsWithOpenApi
      */
     protected function getSchemaContents()
     {
-        return file_get_contents(storage_path('api-docs/' . config('l5-swagger.docs_json')));
+        return file_get_contents(storage_path('api-docs/' . config('l5-swagger.documentations.docs_json')));
     }
 
     protected function checkRequesterIsInstantiated(): void
